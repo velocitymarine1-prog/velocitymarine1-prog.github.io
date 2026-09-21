@@ -38,7 +38,7 @@
   a { color:var(--accent); }
 </style>
 </head>
-<body data-jumpr-pad="1.0.0">
+<body data-jumpr-pad="1.0.1">
 <main>
   <h1>⚡ jumpr pad <span id="linkstate" class="pill off">…</span></h1>
   <div class="card status" id="status">Loading…</div>
@@ -82,6 +82,7 @@
     const k = frag.get('k'), have = ls.get('jumpr.key');
     if (!have || have === k || confirm('This phone is already linked to a jumpr key. Replace it with the new one?')) ls.set('jumpr.key', k);
   }
+  const justLinked = !!frag.get('k');
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   let KEY = ls.get('jumpr.key') || '';
   let projects = []; try { projects = JSON.parse(ls.get('jumpr.projects')||'[]'); } catch(e){}
@@ -120,7 +121,13 @@
     }
   }
   async function loadStatus() {
-    if (!KEY) { $('linkstate').className='pill off'; $('linkstate').textContent='not linked'; $('hint').textContent='Sends open GitHub\'s new-issue form; tap "Submit new issue" there.'; renderStatus(null); return; }
+    if (!KEY) {
+      $('linkstate').className='pill off'; $('linkstate').textContent='not linked';
+      $('hint').innerHTML = 'Not linked: Send opens GitHub\'s new-issue form, which only works if this browser is <b>signed in to GitHub</b> (the inbox is private; a 404 page means you are signed out). <a href="#" id="signin">Sign in to GitHub first</a>, or link this phone below for one-tap sends.';
+      $('signin').onclick = (e) => { e.preventDefault(); const back = CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues'; window.open(CFG.web + '/login?return_to=' + encodeURIComponent(back), '_blank'); };
+      $('linkbox').open = true;
+      renderStatus(null); return;
+    }
     $('linkstate').className='pill run'; $('linkstate').textContent='linked';
     $('hint').textContent='One tap: the task is filed as an issue and the Mac picks it up within a minute.';
     try {
@@ -159,10 +166,11 @@
     btn.disabled = false; btn.textContent = 'Send to the Mac';
   }
   $('send').onclick = send;
-  $('savekey').onclick = () => { const k = $('key').value.trim(); if (!k) return; ls.set('jumpr.key', k); KEY = k; $('key').value=''; $('linkbox').open=false; loadStatus(); };
+  $('savekey').onclick = () => { const k = $('key').value.trim(); if (!k) return; ls.set('jumpr.key', k); KEY = k; $('key').value=''; $('linkbox').open=false; $('ack').style.display='block'; $('ack').textContent='Linked. Loading the Mac status…'; loadStatus(); };
   $('unlink').onclick = () => { if (!confirm('Forget the key on this phone?')) return; ls.del('jumpr.key'); KEY=''; loadStatus(); };
   $('reload').onclick = loadStatus;
   renderProjects(); loadStatus();
+  if (justLinked && ls.get('jumpr.key')) { $('ack').style.display='block'; $('ack').textContent='This phone is now linked. The key was removed from the address bar; delete the message you opened the link from.'; }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) loadStatus(); });
 })();
 </script>
