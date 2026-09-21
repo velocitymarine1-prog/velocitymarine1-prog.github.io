@@ -38,7 +38,7 @@
   a { color:var(--accent); }
 </style>
 </head>
-<body data-jumpr-pad="1.0.1">
+<body data-jumpr-pad="1.0.2">
 <main>
   <h1>⚡ jumpr pad <span id="linkstate" class="pill off">…</span></h1>
   <div class="card status" id="status">Loading…</div>
@@ -129,7 +129,7 @@
       renderStatus(null); return;
     }
     $('linkstate').className='pill run'; $('linkstate').textContent='linked';
-    $('hint').textContent='One tap: the task is filed as an issue and the Mac picks it up within a minute.';
+    $('hint').textContent='One tap: the task is filed as an issue and the Mac picks it up within about 20 seconds.';
     try {
       const issues = await gh('GET', '/repos/' + CFG.owner + '/' + CFG.repo + '/issues?labels=jumpr:status&state=open&per_page=1');
       const body = (issues[0] && issues[0].body) || '';
@@ -154,10 +154,10 @@
     try {
       const is = await gh('POST', '/repos/' + CFG.owner + '/' + CFG.repo + '/issues', { title, body, labels: [label] });
       $('text').value = '';
-      ack.textContent = 'Sent as #' + is.number + '. Waiting for the Mac to pick it up (it polls every minute)…';
+      ack.textContent = 'Sent as #' + is.number + '. Waiting for the Mac to pick it up (it checks every 20 seconds)…';
       const t0 = Date.now();
       while (Date.now() - t0 < 180000) {
-        await new Promise(r => setTimeout(r, 6000));
+        await new Promise(r => setTimeout(r, 4000));
         const cs = await gh('GET', '/repos/' + CFG.owner + '/' + CFG.repo + '/issues/' + is.number + '/comments');
         if (cs.length) { ack.textContent = cs[cs.length-1].body.replace(/\*\*/g,''); loadStatus(); break; }
       }
