@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="jumpr">
+<meta name="robots" content="noindex">
+<title>jumpr pad</title>
+<style>
+  :root { color-scheme: light dark; --bg:#f6f8fa; --fg:#1f2328; --muted:#656d76; --accent:#0969da; --card:#fff; --border:#d0d7de; --ok:#1a7f37; --warn:#9a6700; --bad:#cf222e; --run:#8250df; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#8b949e; --accent:#58a6ff; --card:#161b22; --border:#30363d; --ok:#3fb950; --warn:#d29922; --bad:#f85149; --run:#a371f7; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; background:var(--bg); color:var(--fg); padding:16px; padding-bottom:40px; }
+  main { max-width:560px; margin:0 auto; display:grid; gap:14px; }
+  h1 { font-size:1.4rem; margin:4px 0 0; display:flex; align-items:center; gap:8px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; }
+  .status { font-size:.95rem; line-height:1.5; }
+  .status b { font-weight:600; }
+  .pill { display:inline-block; padding:2px 10px; border-radius:999px; border:1px solid var(--border); font-size:.85rem; }
+  .pill.run { color:var(--run); border-color:var(--run);} .pill.paused{ color:var(--warn); border-color:var(--warn);} .pill.off{ color:var(--muted);} .pill.bad{ color:var(--bad); border-color:var(--bad);}
+  .projects { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 10px; }
+  .projects button { font:inherit; font-size:1rem; padding:10px 14px; border-radius:12px; border:1px solid var(--border); background:var(--bg); color:var(--fg); }
+  .projects button.sel { background:var(--accent); color:#fff; border-color:var(--accent); }
+  textarea { font:inherit; font-size:1.05rem; width:100%; min-height:150px; padding:12px; border-radius:12px; border:1px solid var(--border); background:var(--bg); color:var(--fg); resize:vertical; }
+  .send { font:inherit; font-size:1.1rem; width:100%; margin-top:10px; padding:14px; border-radius:12px; border:0; background:var(--accent); color:#fff; font-weight:600; }
+  .send:disabled { opacity:.5; }
+  .muted { color:var(--muted); font-size:.85rem; }
+  .ack { white-space:pre-wrap; font-size:.9rem; margin-top:10px; padding:10px; border-radius:10px; background:var(--bg); border:1px solid var(--border); }
+  .recent .item { padding:8px 0; border-top:1px solid var(--border); font-size:.9rem; display:flex; gap:8px; align-items:center; }
+  .recent .item:first-child { border-top:0; }
+  .recent .t { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tag { font-size:.72rem; padding:1px 7px; border-radius:6px; border:1px solid var(--border); color:var(--muted); white-space:nowrap; }
+  .tag.done{color:var(--ok);border-color:var(--ok)} .tag.running{color:var(--run);border-color:var(--run)} .tag.blocked,.tag.failed{color:var(--bad);border-color:var(--bad)}
+  input { font:inherit; width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--fg); }
+  .row { display:flex; gap:8px; margin-top:8px; } .row button { font:inherit; padding:10px 14px; border-radius:10px; border:1px solid var(--border); background:var(--card); color:var(--fg); }
+  details summary { cursor:pointer; color:var(--muted); }
+  a { color:var(--accent); }
+</style>
+</head>
+<body data-jumpr-pad="1.0.0">
+<main>
+  <h1>⚡ jumpr pad <span id="linkstate" class="pill off">…</span></h1>
+  <div class="card status" id="status">Loading…</div>
+
+  <div class="card">
+    <div class="muted">Project (lane on the Mac)</div>
+    <div class="projects" id="projects"></div>
+    <textarea id="text" placeholder="Dictate or type the task. One feature per card. Say what done looks like."></textarea>
+    <button class="send" id="send">Send to the Mac</button>
+    <div class="muted" id="hint" style="margin-top:8px"></div>
+    <div class="ack" id="ack" style="display:none"></div>
+  </div>
+
+  <div class="card recent">
+    <div class="muted" style="margin-bottom:6px">Recent</div>
+    <div id="recent"><span class="muted">—</span></div>
+  </div>
+
+  <div class="card">
+    <details id="linkbox">
+      <summary>Link this phone</summary>
+      <p class="muted">Paste a fine-grained GitHub token that can only touch the inbox repo (Issues: read and write). It stays on this phone. Without it the pad hands each task to GitHub's own new-issue form.</p>
+      <input id="key" type="password" placeholder="github_pat_…" autocomplete="off">
+      <div class="row"><button id="savekey">Save key</button><button id="unlink">Unlink</button><button id="reload">Refresh</button></div>
+      <p class="muted" id="repo"></p>
+    </details>
+  </div>
+</main>
+<script>
+(function(){
+  const CFG = { owner: "velocitymarine1-prog", repo: "jumpr-queue", api: "https://api.github.com", web: "https://github.com" };
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const ls = { get:k=>{ try{return localStorage.getItem(k);}catch(e){return null;} }, set:(k,v)=>{ try{localStorage.setItem(k,v);}catch(e){} }, del:k=>{ try{localStorage.removeItem(k);}catch(e){} } };
+  // --- pairing via the link fragment: #k=<token>&p=a,b,c&r=owner/repo  (fragments never reach any server)
+  const frag = new URLSearchParams((location.hash||'').replace(/^#/,''));
+  if (frag.get('r') && /^[\w.-]+\/[\w.-]+$/.test(frag.get('r'))) { const [o,r]=frag.get('r').split('/'); CFG.owner=o; CFG.repo=r; ls.set('jumpr.repo', frag.get('r')); }
+  else if (ls.get('jumpr.repo')) { const [o,r]=ls.get('jumpr.repo').split('/'); CFG.owner=o; CFG.repo=r; }
+  if (frag.get('p')) ls.set('jumpr.projects', JSON.stringify(frag.get('p').split(',').filter(Boolean)));
+  if (frag.get('k')) {
+    const k = frag.get('k'), have = ls.get('jumpr.key');
+    if (!have || have === k || confirm('This phone is already linked to a jumpr key. Replace it with the new one?')) ls.set('jumpr.key', k);
+  }
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  let KEY = ls.get('jumpr.key') || '';
+  let projects = []; try { projects = JSON.parse(ls.get('jumpr.projects')||'[]'); } catch(e){}
+  let selected = ls.get('jumpr.sel') || '';
+  $('repo').textContent = 'inbox: ' + CFG.owner + '/' + CFG.repo;
+
+  async function gh(method, path, body) {
+    const r = await fetch(CFG.api + path, { method, headers: { 'Authorization': 'Bearer ' + KEY, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(body?{'Content-Type':'application/json'}:{}) }, body: body?JSON.stringify(body):undefined });
+    if (r.status === 401) throw new Error('key rejected (401): re-link this phone');
+    if (r.status === 403) throw new Error('forbidden (403): the key needs Issues read/write on ' + CFG.owner + '/' + CFG.repo);
+    if (r.status === 404) throw new Error('not found (404): check the key can see ' + CFG.owner + '/' + CFG.repo);
+    if (!r.ok) throw new Error('GitHub ' + r.status);
+    return r.status === 204 ? null : r.json();
+  }
+  function renderProjects() {
+    const box = $('projects'); box.innerHTML = '';
+    const list = projects.length ? projects : ['inbox'];
+    if (!list.includes(selected)) selected = list[0];
+    for (const p of list) { const b = document.createElement('button'); b.textContent = p; b.className = p===selected?'sel':''; b.onclick = () => { selected = p; ls.set('jumpr.sel', p); renderProjects(); }; box.appendChild(b); }
+  }
+  function fmt(ts){ return ts ? new Date(ts*1000).toLocaleString([], {weekday:'short',hour:'2-digit',minute:'2-digit'}) : ''; }
+  function renderStatus(js) {
+    if (!js) { $('status').innerHTML = '<span class="muted">No status yet. ' + (KEY ? 'The Mac posts one every few minutes while jumpr runs.' : 'Link this phone to see the Mac status here.') + '</span>'; return; }
+    let pill, cls;
+    if (js.paused) { cls='paused'; pill='⏸ paused: ' + (js.pause_reason||'') + (js.resume_at ? ' · resumes ' + fmt(js.resume_at) : ''); }
+    else if (js.running && js.running.length) { cls='run'; pill='⚡ running ' + js.running.map(r=>r.id).join(', '); }
+    else if (js.armed) { cls='run'; pill='⚡ armed'; }
+    else { cls='off'; pill='💤 off (queue empty)'; }
+    if (js.daemon_alive === false) { cls='bad'; pill += ' · daemon not running'; }
+    const run = (js.running||[]).map(r => '<div><b>Running:</b> ' + esc(r.id) + ' · ' + esc(r.project) + ' · ' + esc(r.title) + '</div>').join('');
+    const q = (js.queued||[]).slice(0,8).map(r => '<div class="muted">· ' + esc(r.id) + ' ' + esc(r.project) + ' · ' + esc(r.title) + '</div>').join('');
+    $('status').innerHTML = '<span class="pill ' + cls + '">' + esc(pill) + '</span><div style="margin-top:6px"><b>Queued:</b> ' + (js.queued||[]).length + ' · <b>today</b> ' + js.day_count + '/' + js.day_cap + ' · <span class="muted">updated ' + fmt(js.updated) + '</span></div>' + run + q;
+    if (js.projects && js.projects.length) { projects = js.projects; ls.set('jumpr.projects', JSON.stringify(projects)); renderProjects(); }
+    if (js.history && js.history.length) {
+      $('recent').innerHTML = js.history.map(h => '<div class="item"><span class="t"><b>' + esc(h.id) + '</b> ' + esc(h.title) + (h.summary ? ' <span class="muted">— ' + esc(h.summary) + '</span>' : '') + '</span><span class="tag ' + esc(h.status) + '">' + esc(h.status) + '</span>' + (h.issue ? ' <a href="' + CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues/' + h.issue + '">#' + h.issue + '</a>' : '') + '</div>').join('');
+    }
+  }
+  async function loadStatus() {
+    if (!KEY) { $('linkstate').className='pill off'; $('linkstate').textContent='not linked'; $('hint').textContent='Sends open GitHub\'s new-issue form; tap "Submit new issue" there.'; renderStatus(null); return; }
+    $('linkstate').className='pill run'; $('linkstate').textContent='linked';
+    $('hint').textContent='One tap: the task is filed as an issue and the Mac picks it up within a minute.';
+    try {
+      const issues = await gh('GET', '/repos/' + CFG.owner + '/' + CFG.repo + '/issues?labels=jumpr:status&state=open&per_page=1');
+      const body = (issues[0] && issues[0].body) || '';
+      const m = body.match(/<!--\s*jumpr-status\s*([\s\S]*?)-->/);
+      renderStatus(m ? JSON.parse(m[1]) : null);
+      const mine = await gh('GET', '/repos/' + CFG.owner + '/' + CFG.repo + '/issues?state=all&per_page=8&sort=created&direction=desc');
+      const rows = mine.filter(i => !i.labels.some(l => l.name==='jumpr:status')).map(i => { const st = (i.labels.map(l=>l.name).find(n=>n.startsWith('jumpr:'))||'sent').replace('jumpr:',''); return '<div class="item"><span class="t"><a href="' + esc(i.html_url) + '">#' + i.number + '</a> ' + esc(i.title) + '</span><span class="tag ' + esc(st) + '">' + esc(st) + '</span></div>'; });
+      if (rows.length) $('recent').innerHTML = rows.join('');
+    } catch (e) { $('status').innerHTML = '<span class="pill bad">' + esc(e.message) + '</span>'; }
+  }
+  async function send() {
+    const text = $('text').value.trim(); if (!text) { $('text').focus(); return; }
+    const title = text.split('\n')[0].slice(0, 80);
+    const body = text + '\n\n<!-- sent from jumpr pad -->';
+    const label = 'project:' + (selected || 'inbox');
+    if (!KEY) {
+      const u = CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues/new?' + new URLSearchParams({ title: '[' + (selected||'inbox') + '] ' + title, body, labels: label });
+      window.open(u, '_blank'); return;
+    }
+    const btn = $('send'); btn.disabled = true; btn.textContent = 'Sending…';
+    const ack = $('ack'); ack.style.display='block'; ack.textContent = 'Sending…';
+    try {
+      const is = await gh('POST', '/repos/' + CFG.owner + '/' + CFG.repo + '/issues', { title, body, labels: [label] });
+      $('text').value = '';
+      ack.textContent = 'Sent as #' + is.number + '. Waiting for the Mac to pick it up (it polls every minute)…';
+      const t0 = Date.now();
+      while (Date.now() - t0 < 180000) {
+        await new Promise(r => setTimeout(r, 6000));
+        const cs = await gh('GET', '/repos/' + CFG.owner + '/' + CFG.repo + '/issues/' + is.number + '/comments');
+        if (cs.length) { ack.textContent = cs[cs.length-1].body.replace(/\*\*/g,''); loadStatus(); break; }
+      }
+      if (Date.now() - t0 >= 180000) ack.textContent += '\nNo ack yet. Is the Mac awake and jumpr running? The task is saved as issue #' + is.number + ' and will be picked up when it is.';
+    } catch (e) { ack.textContent = 'Failed: ' + e.message; }
+    btn.disabled = false; btn.textContent = 'Send to the Mac';
+  }
+  $('send').onclick = send;
+  $('savekey').onclick = () => { const k = $('key').value.trim(); if (!k) return; ls.set('jumpr.key', k); KEY = k; $('key').value=''; $('linkbox').open=false; loadStatus(); };
+  $('unlink').onclick = () => { if (!confirm('Forget the key on this phone?')) return; ls.del('jumpr.key'); KEY=''; loadStatus(); };
+  $('reload').onclick = loadStatus;
+  renderProjects(); loadStatus();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) loadStatus(); });
+})();
+</script>
+</body>
+</html>
