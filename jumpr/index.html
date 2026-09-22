@@ -38,7 +38,7 @@
   a { color:var(--accent); }
 </style>
 </head>
-<body data-jumpr-pad="1.0.5">
+<body data-jumpr-pad="1.0.6">
 <main>
   <h1>⚡ jumpr pad <span id="linkstate" class="pill off">…</span></h1>
   <div class="card status" id="status">Loading…</div>
@@ -118,7 +118,8 @@
     $('status').innerHTML = '<span class="pill ' + cls + '">' + esc(pill) + '</span><div style="margin-top:6px"><b>Queued:</b> ' + (js.queued||[]).length + ' · <b>today</b> ' + js.day_count + '/' + js.day_cap + ' · <span class="muted">updated ' + fmt(js.updated) + '</span></div>' + run + q;
     if (js.projects && js.projects.length) { projects = js.projects; ls.set('jumpr.projects', JSON.stringify(projects)); renderProjects(); }
     if (js.history && js.history.length) {
-      $('recent').innerHTML = js.history.map(h => '<div class="item"><span class="t"><b>' + esc(h.id) + '</b> ' + esc(h.title) + (h.summary ? ' <span class="muted">— ' + esc(h.summary) + '</span>' : '') + '</span><span class="tag ' + esc(h.status) + '">' + esc(h.status) + '</span>' + (h.issue ? ' <a href="' + CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues/' + h.issue + '">#' + h.issue + '</a>' : '') + '</div>').join('');
+      $('recent').innerHTML = js.history.map(h => '<div class="item"><span class="t"><b>' + esc(h.id) + '</b> ' + esc(h.title) + (h.summary ? ' <span class="muted">— ' + esc(h.summary) + '</span>' : '') + '</span><span class="tag ' + esc(h.status) + '">' + esc(h.status) + '</span>' + (h.issue ? ' <a href="' + CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues/' + h.issue + '">#' + h.issue + '</a>' : '') + (h.record ? ' <a href="' + esc(h.record) + '" title="record on GitHub">📁</a>' : '') + '</div>').join('');
+      if (js.log_url) $('recent').innerHTML += '<div class="item muted"><a href="' + esc(js.log_url) + '">📁 Every finished card, one folder each</a></div>';
     }
   }
   async function loadStatus() {
