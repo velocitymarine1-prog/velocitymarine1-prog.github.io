@@ -38,7 +38,7 @@
   a { color:var(--accent); }
 </style>
 </head>
-<body data-jumpr-pad="1.0.2">
+<body data-jumpr-pad="1.0.5">
 <main>
   <h1>⚡ jumpr pad <span id="linkstate" class="pill off">…</span></h1>
   <div class="card status" id="status">Loading…</div>
@@ -47,6 +47,7 @@
     <div class="muted">Project (lane on the Mac)</div>
     <div class="projects" id="projects"></div>
     <textarea id="text" placeholder="Dictate or type the task. One feature per card. Say what done looks like."></textarea>
+    <label class="muted" style="display:block;margin-top:8px"><input type="checkbox" id="skipDesign"> skip the design pass for this card</label>
     <button class="send" id="send">Send to the Mac</button>
     <div class="muted" id="hint" style="margin-top:8px"></div>
     <div class="ack" id="ack" style="display:none"></div>
@@ -145,15 +146,16 @@
     const title = text.split('\n')[0].slice(0, 80);
     const body = text + '\n\n<!-- sent from jumpr pad -->';
     const label = 'project:' + (selected || 'inbox');
+    const labels = [label].concat($('skipDesign').checked ? ['option:no-design'] : []);
     if (!KEY) {
-      const u = CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues/new?' + new URLSearchParams({ title: '[' + (selected||'inbox') + '] ' + title, body, labels: label });
+      const u = CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues/new?' + new URLSearchParams({ title: '[' + (selected||'inbox') + '] ' + title, body, labels: labels.join(',') });
       window.open(u, '_blank'); return;
     }
     const btn = $('send'); btn.disabled = true; btn.textContent = 'Sending…';
     const ack = $('ack'); ack.style.display='block'; ack.textContent = 'Sending…';
     try {
-      const is = await gh('POST', '/repos/' + CFG.owner + '/' + CFG.repo + '/issues', { title, body, labels: [label] });
-      $('text').value = '';
+      const is = await gh('POST', '/repos/' + CFG.owner + '/' + CFG.repo + '/issues', { title, body, labels });
+      $('text').value = ''; $('skipDesign').checked = false;
       ack.textContent = 'Sent as #' + is.number + '. Waiting for the Mac to pick it up (it checks every 20 seconds)…';
       const t0 = Date.now();
       while (Date.now() - t0 < 180000) {
