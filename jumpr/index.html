@@ -30,9 +30,9 @@
   .pad .mac.off b { color:var(--bad); }
   .pad .mac.quiet b { color:var(--warn); }
   .pad .gear { background:none; border:0; color:var(--mute); font-size:20px; padding:6px; cursor:pointer; line-height:1; }
-  .pad .card { background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:18px; }
-  .pad .lab { font-family:var(--mono); text-transform:uppercase; letter-spacing:.18em; font-size:13px; color:var(--mute); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
-  .pad .lab .right { margin-left:auto; letter-spacing:.04em; text-transform:none; color:var(--dim); }
+  .pad .card { background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:18px; min-width:0; }
+  .pad .lab { font-family:var(--mono); text-transform:uppercase; letter-spacing:.18em; font-size:13px; color:var(--mute); margin:0 0 12px; display:flex; align-items:center; gap:8px; white-space:nowrap; min-width:0; }
+  .pad .lab .right { margin-left:auto; letter-spacing:.04em; text-transform:none; color:var(--dim); min-width:0; flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; }
   /* which Claude */
   .pad .seg { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .pad .seg button { font:inherit; padding:12px 12px; border-radius:var(--r2); border:1px solid var(--line2); background:transparent; color:var(--mute); text-align:left; cursor:pointer; display:grid; gap:2px; min-width:0; }
