@@ -4,76 +4,174 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="jumpr">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JUMPR">
+<meta name="theme-color" content="#100906">
 <meta name="robots" content="noindex">
-<title>jumpr pad</title>
+<title>JUMPR pad</title>
 <style>
-  :root { color-scheme: light dark; --bg:#f6f8fa; --fg:#1f2328; --muted:#656d76; --accent:#0969da; --card:#fff; --border:#d0d7de; --ok:#1a7f37; --warn:#9a6700; --bad:#cf222e; --run:#8250df; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#8b949e; --accent:#58a6ff; --card:#161b22; --border:#30363d; --ok:#3fb950; --warn:#d29922; --bad:#f85149; --run:#a371f7; } }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; background:var(--bg); color:var(--fg); padding:16px; padding-bottom:40px; }
-  main { max-width:560px; margin:0 auto; display:grid; gap:14px; }
-  h1 { font-size:1.4rem; margin:4px 0 0; display:flex; align-items:center; gap:8px; }
-  .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; }
-  .status { font-size:.95rem; line-height:1.5; }
-  .status b { font-weight:600; }
-  .pill { display:inline-block; padding:2px 10px; border-radius:999px; border:1px solid var(--border); font-size:.85rem; }
-  .pill.run { color:var(--run); border-color:var(--run);} .pill.paused{ color:var(--warn); border-color:var(--warn);} .pill.off{ color:var(--muted);} .pill.bad{ color:var(--bad); border-color:var(--bad);}
-  .projects { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 10px; }
-  .projects button { font:inherit; font-size:1rem; padding:10px 14px; border-radius:12px; border:1px solid var(--border); background:var(--bg); color:var(--fg); }
-  .projects button.sel { background:var(--accent); color:#fff; border-color:var(--accent); }
-  textarea { font:inherit; font-size:1.05rem; width:100%; min-height:150px; padding:12px; border-radius:12px; border:1px solid var(--border); background:var(--bg); color:var(--fg); resize:vertical; }
-  .send { font:inherit; font-size:1.1rem; width:100%; margin-top:10px; padding:14px; border-radius:12px; border:0; background:var(--accent); color:#fff; font-weight:600; }
-  .send:disabled { opacity:.5; }
-  .muted { color:var(--muted); font-size:.85rem; }
-  .ack { white-space:pre-wrap; font-size:.9rem; margin-top:10px; padding:10px; border-radius:10px; background:var(--bg); border:1px solid var(--border); }
-  .recent .item { padding:8px 0; border-top:1px solid var(--border); font-size:.9rem; display:flex; gap:8px; align-items:center; }
-  .recent .item:first-child { border-top:0; }
-  .recent .t { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .tag { font-size:.72rem; padding:1px 7px; border-radius:6px; border:1px solid var(--border); color:var(--muted); white-space:nowrap; }
-  .tag.done{color:var(--ok);border-color:var(--ok)} .tag.running{color:var(--run);border-color:var(--run)} .tag.blocked,.tag.failed{color:var(--bad);border-color:var(--bad)}
-  input { font:inherit; width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--fg); }
-  .row { display:flex; gap:8px; margin-top:8px; } .row button { font:inherit; padding:10px 14px; border-radius:10px; border:1px solid var(--border); background:var(--card); color:var(--fg); }
-  details summary { cursor:pointer; color:var(--muted); }
-  a { color:var(--accent); }
+  /* Sunset pad (jumpr 1.1): one dark look, the Claude-B terminal orange (RGB 30000/11500/2000 = #752d08)
+     as the ember, a lighter tint of the same hue as the accent. Section labels in mono caps. */
+  :root { color-scheme: dark;
+    --bg:#100906; --card:#1a100a; --well:#22150d; --line:rgba(255,138,76,.16); --line2:rgba(255,138,76,.34);
+    --ink:#f5e9df; --mute:#a88f7d; --dim:#6f5c4f; --orange:#f76922; --soft:#ff9c6b; --ember:#752d08; --ember-line:#a8461a; --ember-ink:#ffc9a6;
+    --paper:#efe3d8; --paper-ink:#2a1a10; --ok:#7bd88f; --warn:#f2c14e; --bad:#ff6b6b; --r:22px; --r2:14px;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { background:var(--bg); }
+  body { margin:0; color:var(--ink); font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif; font-size:17px; line-height:1.4;
+         padding-block: max(12px, env(safe-area-inset-top, 0px)) calc(40px + env(safe-area-inset-bottom, 0px)); padding-inline:16px; }
+  .pad { max-width:560px; margin:0 auto; display:grid; gap:14px; }
+  .pad .top { display:flex; align-items:center; gap:10px; padding:6px 4px 2px; }
+  .pad .mark { font-weight:800; font-size:26px; letter-spacing:.06em; color:var(--soft); white-space:nowrap; }
+  .pad .mark span { font-size:22px; margin-right:6px; }
+  .pad .mac { font-family:var(--mono); color:var(--mute); font-size:13.5px; letter-spacing:.02em; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pad .mac b { color:var(--ink); font-weight:600; }
+  .pad .mac.off b { color:var(--bad); }
+  .pad .mac.quiet b { color:var(--warn); }
+  .pad .gear { background:none; border:0; color:var(--mute); font-size:20px; padding:6px; cursor:pointer; line-height:1; }
+  .pad .card { background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:18px; }
+  .pad .lab { font-family:var(--mono); text-transform:uppercase; letter-spacing:.18em; font-size:13px; color:var(--mute); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+  .pad .lab .right { margin-left:auto; letter-spacing:.04em; text-transform:none; color:var(--dim); }
+  /* which Claude */
+  .pad .seg { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .pad .seg button { font:inherit; padding:12px 12px; border-radius:var(--r2); border:1px solid var(--line2); background:transparent; color:var(--mute); text-align:left; cursor:pointer; display:grid; gap:2px; min-width:0; }
+  .pad .seg button .n { font-weight:700; font-size:17px; color:var(--ink); }
+  .pad .seg button .s { font-size:12.5px; opacity:.9; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pad .seg button.a.on { background:var(--paper); border-color:var(--paper); color:#6b4a35; }
+  .pad .seg button.a.on .n { color:var(--paper-ink); }
+  .pad .seg button.b.on { background:var(--ember); border-color:var(--ember-line); color:var(--ember-ink); }
+  .pad .seg button.b.on .n { color:#fff; }
+  .pad .who { margin:12px 0 0; display:grid; gap:5px; font-size:13.5px; color:var(--mute); }
+  .pad .who div { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pad .who b { color:var(--ink); font-weight:600; }
+  .pad .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px; vertical-align:middle; background:var(--dim); }
+  .pad .dot.live { background:var(--ok); }
+  .pad .dot.busy { background:var(--soft); }
+  /* projects */
+  .pad .projects { display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 1fr)); gap:8px; }
+  .pad .projects button { font:inherit; font-size:16px; font-weight:600; padding:14px 8px; border-radius:var(--r2); border:1px solid var(--line2); background:transparent; color:var(--mute); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pad .projects button.sel { background:var(--soft); border-color:var(--soft); color:var(--paper-ink); }
+  /* notes */
+  .pad textarea { font:inherit; width:100%; min-height:150px; padding:14px; border-radius:var(--r2); border:1px solid var(--line2); background:var(--well); color:var(--ink); resize:vertical; outline:none; }
+  .pad textarea:focus { border-color:var(--soft); box-shadow:0 0 0 1px var(--soft), inset 0 0 0 1px var(--soft); }
+  .pad textarea::placeholder { color:var(--dim); }
+  .pad .notes { display:grid; gap:6px; margin-top:10px; }
+  .pad .notes:empty { display:none; }
+  .pad .note { display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border-radius:12px; background:var(--well); border:1px solid var(--line); font-size:15px; }
+  .pad .note .t { flex:1; min-width:0; white-space:pre-wrap; word-break:break-word; }
+  .pad .note button { background:none; border:0; color:var(--mute); font-size:18px; line-height:1; padding:0 2px; cursor:pointer; }
+  .pad .btn { font:inherit; font-size:17px; font-weight:700; width:100%; padding:15px; border-radius:var(--r2); border:1px solid var(--line2); background:transparent; color:var(--soft); cursor:pointer; margin-top:10px; }
+  .pad .btn.primary { background:var(--orange); border-color:var(--orange); color:#1a0a03; }
+  .pad .btn.primary.b { background:var(--ember); border-color:var(--ember-line); color:#fff; }
+  .pad .btn:disabled { opacity:.5; }
+  .pad .opt { margin-top:12px; font-size:14px; color:var(--mute); display:flex; align-items:center; gap:8px; }
+  .pad .opt input { width:18px; height:18px; accent-color:var(--orange); margin:0; }
+  .pad .hint { color:var(--mute); font-size:13.5px; margin-top:10px; line-height:1.45; }
+  .pad .ack { white-space:pre-wrap; font-size:14px; margin-top:10px; padding:12px; border-radius:12px; background:var(--well); border:1px solid var(--line); line-height:1.45; }
+  /* mac status */
+  .pad .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .pad .chip { font-family:var(--mono); font-size:13.5px; padding:8px 12px; border-radius:10px; border:1px solid var(--line2); background:var(--well); color:var(--mute); display:inline-flex; gap:6px; align-items:center; }
+  .pad .chip b { color:var(--ink); font-weight:700; }
+  .pad .chip.on b { color:var(--ok); } .pad .chip.run b { color:var(--soft); } .pad .chip.paused b { color:var(--warn); } .pad .chip.bad b { color:var(--bad); }
+  .pad .now { margin-top:12px; font-family:var(--mono); font-size:13.5px; color:var(--mute); line-height:1.55; word-break:break-word; }
+  .pad .now:empty { display:none; }
+  .pad .now b { color:var(--ink); }
+  .pad .now .k { color:var(--soft); }
+  /* happening + recent */
+  .pad .rows { display:grid; }
+  .pad .row { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:10px; align-items:start; padding:11px 0; border-top:1px solid var(--line); }
+  .pad .row:first-child { border-top:0; padding-top:0; }
+  .pad .row:last-child { padding-bottom:0; }
+  .pad .badge { font-family:var(--mono); font-weight:700; font-size:12px; width:26px; height:26px; border-radius:8px; display:grid; place-items:center; margin-top:1px; }
+  .pad .badge.a { background:var(--paper); color:var(--paper-ink); }
+  .pad .badge.b { background:var(--ember); color:#fff; border:1px solid var(--ember-line); }
+  .pad .row .t { min-width:0; font-size:15px; line-height:1.35; }
+  .pad .row .t .h { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pad .row .t .m { color:var(--mute); font-size:13px; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pad .row .t .m a { color:var(--soft); text-decoration:none; }
+  .pad .st { font-family:var(--mono); font-size:12px; padding:3px 8px; border-radius:7px; border:1px solid var(--line2); color:var(--mute); white-space:nowrap; margin-top:2px; }
+  .pad .st.busy { color:var(--soft); border-color:var(--soft); }
+  .pad .st.done { color:var(--ok); border-color:var(--ok); }
+  .pad .st.blocked, .pad .st.failed, .pad .st.error, .pad .st.lost { color:var(--bad); border-color:var(--bad); }
+  .pad .st.waiting { color:var(--warn); border-color:var(--warn); }
+  .pad .st.busy::before { content:""; display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--soft); margin-right:6px; animation:pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:.35 } 50% { opacity:1 } }
+  @media (prefers-reduced-motion: reduce) { .pad .st.busy::before { animation:none } }
+  .pad .empty { color:var(--dim); font-size:14.5px; }
+  /* settings sheet */
+  .pad .sheet[hidden] { display:none; }
+  .pad input[type=password] { font:inherit; width:100%; padding:12px; border-radius:12px; border:1px solid var(--line2); background:var(--well); color:var(--ink); }
+  .pad .btnrow { display:flex; gap:8px; margin-top:8px; }
+  .pad .btnrow button { font:inherit; flex:1; padding:12px; border-radius:12px; border:1px solid var(--line2); background:transparent; color:var(--ink); cursor:pointer; }
+  .pad a { color:var(--soft); }
+  .pad .foot { text-align:center; color:var(--dim); font-size:12.5px; padding:4px 0 0; }
+  .pad button:focus-visible, .pad textarea:focus-visible, .pad input:focus-visible { outline:2px solid var(--soft); outline-offset:2px; }
 </style>
 </head>
-<body data-jumpr-pad="1.0.6">
-<main>
-  <h1>⚡ jumpr pad <span id="linkstate" class="pill off">…</span></h1>
-  <div class="card status" id="status">Loading…</div>
+<body data-jumpr-pad="1.1.0">
+<main class="pad">
+  <header class="top">
+    <div class="mark"><span>🦘</span>JUMPR</div>
+    <div class="mac" id="mac">…</div>
+    <button class="gear" id="gear" aria-label="Link this phone and settings" title="Link this phone / settings">⚙</button>
+  </header>
 
-  <div class="card">
-    <div class="muted">Project (lane on the Mac)</div>
+  <section class="card">
+    <div class="lab">Claude <span class="right">which login runs the card</span></div>
+    <div class="seg" id="seg"></div>
+    <div class="who" id="who"></div>
+  </section>
+
+  <section class="card">
+    <div class="lab">Project <span class="right">lane on the Mac</span></div>
     <div class="projects" id="projects"></div>
-    <textarea id="text" placeholder="Dictate or type the task. One feature per card. Say what done looks like."></textarea>
-    <label class="muted" style="display:block;margin-top:8px"><input type="checkbox" id="skipDesign"> skip the design pass for this card</label>
-    <button class="send" id="send">Send to the Mac</button>
-    <div class="muted" id="hint" style="margin-top:8px"></div>
-    <div class="ack" id="ack" style="display:none"></div>
-  </div>
+  </section>
 
-  <div class="card recent">
-    <div class="muted" style="margin-bottom:6px">Recent</div>
-    <div id="recent"><span class="muted">—</span></div>
-  </div>
+  <section class="card">
+    <div class="lab">Notes <span class="right" id="noteCount"></span></div>
+    <textarea id="text" placeholder="Talk it out — Wispr Flow lands here. Paint the picture."></textarea>
+    <div class="notes" id="notes"></div>
+    <button class="btn" id="addNote">+ Add note</button>
+    <button class="btn primary" id="send">Send to Claude A</button>
+    <label class="opt"><input type="checkbox" id="skipDesign"> skip the design pass for this card</label>
+    <div class="hint" id="hint"></div>
+    <div class="ack" id="ack" hidden></div>
+  </section>
 
-  <div class="card">
-    <details id="linkbox">
-      <summary>Link this phone</summary>
-      <p class="muted">Paste a fine-grained GitHub token that can only touch the inbox repo (Issues: read and write). It stays on this phone. Without it the pad hands each task to GitHub's own new-issue form.</p>
-      <input id="key" type="password" placeholder="github_pat_…" autocomplete="off">
-      <div class="row"><button id="savekey">Save key</button><button id="unlink">Unlink</button><button id="reload">Refresh</button></div>
-      <p class="muted" id="repo"></p>
-    </details>
-  </div>
+  <section class="card">
+    <div class="lab">Mac status</div>
+    <div class="chips" id="chips"><span class="chip">loading…</span></div>
+    <div class="now" id="now"></div>
+  </section>
+
+  <section class="card">
+    <div class="lab">Happening now <span class="right" id="liveCount">every Claude Code session on the Mac</span></div>
+    <div class="rows" id="live"><div class="empty">—</div></div>
+  </section>
+
+  <section class="card">
+    <div class="lab">Recent <span class="right">cards and sessions</span></div>
+    <div class="rows" id="recent"><div class="empty">—</div></div>
+  </section>
+
+  <section class="card sheet" id="sheet" hidden>
+    <div class="lab">Link this phone</div>
+    <p class="hint" style="margin-top:0">Paste a fine-grained GitHub token that can only touch the inbox repo (Issues: read and write). It stays on this phone. Without it the pad hands each task to GitHub's own new-issue form.</p>
+    <input id="key" type="password" placeholder="github_pat_…" autocomplete="off">
+    <div class="btnrow"><button id="savekey">Save key</button><button id="unlink">Unlink</button><button id="reload">Refresh</button></div>
+    <p class="hint" id="repo"></p>
+  </section>
+  <div class="foot" id="foot"></div>
 </main>
 <script>
 (function(){
-  const CFG = { owner: "velocitymarine1-prog", repo: "jumpr-queue", api: "https://api.github.com", web: "https://github.com" };
+  const CFG = { owner: "velocitymarine1-prog", repo: "jumpr-queue", api: "https://api.github.com", web: "https://github.com", version: "1.1.0" };
   const $ = id => document.getElementById(id);
   const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const ls = { get:k=>{ try{return localStorage.getItem(k);}catch(e){return null;} }, set:(k,v)=>{ try{localStorage.setItem(k,v);}catch(e){} }, del:k=>{ try{localStorage.removeItem(k);}catch(e){} } };
+  const NICK = { 'protocol-sunrise':'SUNRISE', 'ai-npc':'AI NPC', 'art-style':'Art style', 'home':'Home', 'inbox':'Inbox', 'jumpr':'jumpr' };
+  const FALLBACK_ACCOUNTS = [{name:'main', label:'Claude A'}, {name:'claude-b', label:'Claude B'}];
   // --- pairing via the link fragment: #k=<token>&p=a,b,c&r=owner/repo  (fragments never reach any server)
   const frag = new URLSearchParams((location.hash||'').replace(/^#/,''));
   if (frag.get('r') && /^[\w.-]+\/[\w.-]+$/.test(frag.get('r'))) { const [o,r]=frag.get('r').split('/'); CFG.owner=o; CFG.repo=r; ls.set('jumpr.repo', frag.get('r')); }
@@ -87,8 +185,29 @@
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   let KEY = ls.get('jumpr.key') || '';
   let projects = []; try { projects = JSON.parse(ls.get('jumpr.projects')||'[]'); } catch(e){}
+  let lanes = null;           // [{name,label,path,account}] from the Mac when it has posted them
+  let accounts = FALLBACK_ACCOUNTS;
   let selected = ls.get('jumpr.sel') || '';
+  let acct = ls.get('jumpr.acct') || 'main';
+  let notes = []; try { notes = JSON.parse(ls.get('jumpr.notes')||'[]'); if (!Array.isArray(notes)) notes = []; } catch(e){ notes = []; }
+  let status = null;
   $('repo').textContent = 'inbox: ' + CFG.owner + '/' + CFG.repo;
+  $('foot').textContent = 'jumpr pad ' + CFG.version;
+  $('text').value = ls.get('jumpr.draft') || '';
+  $('text').addEventListener('input', () => ls.set('jumpr.draft', $('text').value));
+
+  const lab = n => (lanes && (lanes.find(l => l.name===n)||{}).label) || NICK[n] || (n ? n.replace(/[-_]+/g,' ').replace(/^./, c=>c.toUpperCase()) : '');
+  const acctLabel = n => (accounts.find(a => a.name===n)||{}).label || (n==='main' ? 'Claude A' : n.replace(/[-_]+/g,' ').replace(/\b\w/g, c=>c.toUpperCase()));
+  const isMain = n => !n || n==='main';
+  function ago(ts) {
+    if (!ts) return '';
+    const s = Math.max(0, Math.floor(Date.now()/1000 - ts));
+    if (s < 60) return s + 's ago';
+    if (s < 3600) return Math.floor(s/60) + 'm ago';
+    if (s < 86400) return Math.floor(s/3600) + 'h ago';
+    return Math.floor(s/86400) + 'd ago';
+  }
+  function fmt(ts){ return ts ? new Date(ts*1000).toLocaleString([], {weekday:'short',hour:'2-digit',minute:'2-digit'}) : ''; }
 
   async function gh(method, path, body) {
     const r = await fetch(CFG.api + path, { method, headers: { 'Authorization': 'Bearer ' + KEY, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(body?{'Content-Type':'application/json'}:{}) }, body: body?JSON.stringify(body):undefined });
@@ -98,66 +217,146 @@
     if (!r.ok) throw new Error('GitHub ' + r.status);
     return r.status === 204 ? null : r.json();
   }
+
+  // ------------------------------------------------------------ which Claude
+  function renderAccounts() {
+    const seg = $('seg'); seg.innerHTML = '';
+    if (!accounts.some(a => a.name===acct)) acct = accounts[0].name;
+    accounts.forEach((a, i) => {
+      const b = document.createElement('button');
+      const main = isMain(a.name);
+      b.className = (main ? 'a' : 'b') + (a.name===acct ? ' on' : '');
+      b.innerHTML = '<span class="n">' + esc(a.label || acctLabel(a.name)) + '</span><span class="s">' + esc(main ? 'main login · default window' : a.name + ' · orange window') + '</span>';
+      b.onclick = () => { acct = a.name; ls.set('jumpr.acct', acct); renderAccounts(); };
+      seg.appendChild(b);
+    });
+    const send = $('send');
+    send.textContent = 'Send to ' + acctLabel(acct);
+    send.className = 'btn primary' + (isMain(acct) ? '' : ' b');
+    $('who').innerHTML = accounts.map(a => {
+      const live = a.live || 0, busy = a.busy || 0;
+      const dot = busy ? 'busy' : live ? 'live' : '';
+      const who = a.email ? 'signed in as ' + a.email : (a.logged_in === false ? 'signed out' : (a.name==='main' ? '~/.claude' : a.name));
+      return '<div><span class="dot ' + dot + '"></span><b>' + esc(a.label || acctLabel(a.name)) + '</b> · ' + (live ? live + ' live' + (busy ? ' (' + busy + ' busy)' : '') : 'idle') + ' · ' + esc(who) + '</div>';
+    }).join('');
+  }
+
+  // ------------------------------------------------------------ projects
   function renderProjects() {
     const box = $('projects'); box.innerHTML = '';
     const list = projects.length ? projects : ['inbox'];
     if (!list.includes(selected)) selected = list[0];
-    for (const p of list) { const b = document.createElement('button'); b.textContent = p; b.className = p===selected?'sel':''; b.onclick = () => { selected = p; ls.set('jumpr.sel', p); renderProjects(); }; box.appendChild(b); }
+    for (const p of list) { const b = document.createElement('button'); b.textContent = lab(p); b.title = p; b.className = p===selected?'sel':''; b.onclick = () => { selected = p; ls.set('jumpr.sel', p); renderProjects(); }; box.appendChild(b); }
   }
-  function fmt(ts){ return ts ? new Date(ts*1000).toLocaleString([], {weekday:'short',hour:'2-digit',minute:'2-digit'}) : ''; }
+
+  // ------------------------------------------------------------ notes
+  function renderNotes() {
+    $('notes').innerHTML = notes.map((n, i) => '<div class="note"><span class="t">' + esc(n) + '</span><button data-i="' + i + '" aria-label="remove note">×</button></div>').join('');
+    $('noteCount').textContent = notes.length ? notes.length + ' note' + (notes.length===1?'':'s') + ' stacked' : '';
+    ls.set('jumpr.notes', JSON.stringify(notes));
+  }
+  $('notes').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; notes.splice(parseInt(b.dataset.i, 10), 1); renderNotes(); });
+  $('addNote').onclick = () => { const t = $('text').value.trim(); if (!t) { $('text').focus(); return; } notes.push(t); $('text').value = ''; ls.del('jumpr.draft'); renderNotes(); $('text').focus(); };
+
+  // ------------------------------------------------------------ status
+  function macLine(js) {
+    const el = $('mac');
+    if (!KEY) { el.className = 'mac off'; el.innerHTML = '<b>not linked</b> · tap ⚙'; return; }
+    if (!js) { el.className = 'mac'; el.innerHTML = 'no status yet'; return; }
+    const age = Math.max(0, Math.floor(Date.now()/1000 - (js.updated||0)));
+    if (js.daemon_alive === false) { el.className = 'mac off'; el.innerHTML = '<b>Mac offline</b> · ' + ago(js.updated); return; }
+    if (age > 900) { el.className = 'mac quiet'; el.innerHTML = '<b>Mac quiet</b> · ' + ago(js.updated); return; }
+    el.className = 'mac'; el.innerHTML = '<b>Mac online</b> · ' + ago(js.updated);
+  }
+  function chip(cls, k, v) { return '<span class="chip ' + cls + '">' + esc(k) + ' <b>' + esc(v) + '</b></span>'; }
+  function sessionRow(s) {
+    const main = isMain(s.account);
+    const st = s.status || 'idle';
+    const meta = [lab(s.project) || s.project, s.task, s.prompts ? s.prompts + ' prompt' + (s.prompts===1?'':'s') : null, ago(st==='ended'||st==='lost' ? (s.ended||s.last) : s.last)].filter(Boolean).join(' · ');
+    const tail = s.last_message ? ' — ' + esc(s.last_message) : (s.last_tool && st==='busy' ? ' — ' + esc(s.last_tool) : '');
+    return '<div class="row"><span class="badge ' + (main?'a':'b') + '" title="' + esc(acctLabel(s.account||'main')) + '">' + (main?'A':'B') + '</span><div class="t"><div class="h">' + esc(s.title || '(no prompt yet)') + '</div><div class="m">' + esc(meta) + tail + '</div></div><span class="st ' + esc(st) + '">' + esc(st) + '</span></div>';
+  }
+  function cardRow(h) {
+    const main = isMain(h.account);
+    const links = (h.issue ? ' <a href="' + CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues/' + h.issue + '">#' + h.issue + '</a>' : '') + (h.record ? ' <a href="' + esc(h.record) + '" title="record on GitHub">📁</a>' : '');
+    const meta = [h.id, lab(h.project) || h.project, ago(h.finished)].filter(Boolean).join(' · ');
+    return '<div class="row"><span class="badge ' + (main?'a':'b') + '" title="' + esc(acctLabel(h.account||'main')) + '">' + (main?'A':'B') + '</span><div class="t"><div class="h">' + esc(h.title) + '</div><div class="m">' + esc(meta) + links + (h.summary ? ' — ' + esc(h.summary) : '') + '</div></div><span class="st ' + esc(h.status) + '">' + esc(h.status) + '</span></div>';
+  }
   function renderStatus(js) {
-    if (!js) { $('status').innerHTML = '<span class="muted">No status yet. ' + (KEY ? 'The Mac posts one every few minutes while jumpr runs.' : 'Link this phone to see the Mac status here.') + '</span>'; return; }
-    let pill, cls;
-    if (js.paused) { cls='paused'; pill='⏸ paused: ' + (js.pause_reason||'') + (js.resume_at ? ' · resumes ' + fmt(js.resume_at) : ''); }
-    else if (js.running && js.running.length) { cls='run'; pill='⚡ running ' + js.running.map(r=>r.id).join(', '); }
-    else if (js.armed) { cls='run'; pill='⚡ armed'; }
-    else { cls='off'; pill='💤 off (queue empty)'; }
-    if (js.daemon_alive === false) { cls='bad'; pill += ' · daemon not running'; }
-    const run = (js.running||[]).map(r => '<div><b>Running:</b> ' + esc(r.id) + ' · ' + esc(r.project) + ' · ' + esc(r.title) + '</div>').join('');
-    const q = (js.queued||[]).slice(0,8).map(r => '<div class="muted">· ' + esc(r.id) + ' ' + esc(r.project) + ' · ' + esc(r.title) + '</div>').join('');
-    $('status').innerHTML = '<span class="pill ' + cls + '">' + esc(pill) + '</span><div style="margin-top:6px"><b>Queued:</b> ' + (js.queued||[]).length + ' · <b>today</b> ' + js.day_count + '/' + js.day_cap + ' · <span class="muted">updated ' + fmt(js.updated) + '</span></div>' + run + q;
-    if (js.projects && js.projects.length) { projects = js.projects; ls.set('jumpr.projects', JSON.stringify(projects)); renderProjects(); }
-    if (js.history && js.history.length) {
-      $('recent').innerHTML = js.history.map(h => '<div class="item"><span class="t"><b>' + esc(h.id) + '</b> ' + esc(h.title) + (h.summary ? ' <span class="muted">— ' + esc(h.summary) + '</span>' : '') + '</span><span class="tag ' + esc(h.status) + '">' + esc(h.status) + '</span>' + (h.issue ? ' <a href="' + CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues/' + h.issue + '">#' + h.issue + '</a>' : '') + (h.record ? ' <a href="' + esc(h.record) + '" title="record on GitHub">📁</a>' : '') + '</div>').join('');
-      if (js.log_url) $('recent').innerHTML += '<div class="item muted"><a href="' + esc(js.log_url) + '">📁 Every finished card, one folder each</a></div>';
+    status = js;
+    macLine(js);
+    if (!js) {
+      $('chips').innerHTML = '<span class="chip">' + (KEY ? 'no status yet — the Mac posts one every few minutes while jumpr runs' : 'link this phone to see the Mac here') + '</span>';
+      $('now').textContent = '';
+      return;
     }
+    let chain, cls;
+    if (js.paused) { cls='paused'; chain = 'PAUSED ' + (js.pause_reason||'') + (js.resume_at ? ' · resumes ' + fmt(js.resume_at) : ''); }
+    else if (js.running && js.running.length) { cls='run'; chain='RUNNING'; }
+    else if (js.armed) { cls='on'; chain='ARMED'; }
+    else { cls=''; chain='OFF'; }
+    const chips = [chip(cls, '⛓ chain', chain)];
+    if (js.running && js.running.length) chips.push(chip('run', '▶', js.running.map(r=>r.id).join(', ')));
+    chips.push(chip('', 'queued', String((js.queued||[]).length)));
+    chips.push(chip('', 'today', js.day_count + '/' + js.day_cap));
+    if (js.daemon_alive === false) chips.push(chip('bad', 'daemon', 'down'));
+    $('chips').innerHTML = chips.join('');
+    const now = [];
+    for (const r of js.running||[]) now.push('<div><b>now:</b> <span class="k">' + esc(r.id) + ' ' + esc(lab(r.project)||r.project) + '</span>: ' + esc(r.title) + (r.account && !isMain(r.account) ? ' <b>[' + esc(acctLabel(r.account)) + ']</b>' : '') + '</div>');
+    const q = (js.queued||[]).slice(0,6);
+    if (q.length) now.push('<div><b>next:</b> ' + q.map(r => esc(r.id) + ' ' + esc(lab(r.project)||r.project) + ': ' + esc((r.title||'').slice(0,60))).join(' · ') + '</div>');
+    $('now').innerHTML = now.join('');
+    if (js.lanes && js.lanes.length) lanes = js.lanes;
+    if (js.projects && js.projects.length) { projects = js.projects; ls.set('jumpr.projects', JSON.stringify(projects)); }
+    renderProjects();
+    if (js.accounts && js.accounts.length) accounts = js.accounts;
+    renderAccounts();
+    const live = (js.sessions && js.sessions.live) || [];
+    $('liveCount').textContent = live.length ? live.length + ' session' + (live.length===1?'':'s') : 'every Claude Code session on the Mac';
+    $('live').innerHTML = live.length ? live.map(sessionRow).join('') : '<div class="empty">Nothing running. Both Claudes are idle.</div>';
+    const items = [];
+    for (const h of js.history||[]) items.push({ ts: h.finished||0, html: cardRow(h) });
+    for (const s of (js.sessions && js.sessions.recent) || []) if (!s.task) items.push({ ts: s.ended||s.last||0, html: sessionRow(s) });
+    items.sort((a,b) => b.ts - a.ts);
+    let html = items.slice(0, 15).map(i => i.html).join('');
+    if (js.log_url) html += '<div class="row"><span></span><div class="t"><div class="m"><a href="' + esc(js.log_url) + '">📁 Every finished card, one folder each</a></div></div><span></span></div>';
+    $('recent').innerHTML = html || '<div class="empty">Nothing yet.</div>';
   }
   async function loadStatus() {
     if (!KEY) {
-      $('linkstate').className='pill off'; $('linkstate').textContent='not linked';
-      $('hint').innerHTML = 'Not linked: Send opens GitHub\'s new-issue form, which only works if this browser is <b>signed in to GitHub</b> (the inbox is private; a 404 page means you are signed out). <a href="#" id="signin">Sign in to GitHub first</a>, or link this phone below for one-tap sends.';
+      $('hint').innerHTML = 'Not linked: Send opens GitHub\'s new-issue form, which only works if this browser is <b>signed in to GitHub</b> (the inbox is private; a 404 page means you are signed out). <a href="#" id="signin">Sign in to GitHub first</a>, or link this phone (⚙) for one-tap sends.';
       $('signin').onclick = (e) => { e.preventDefault(); const back = CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues'; window.open(CFG.web + '/login?return_to=' + encodeURIComponent(back), '_blank'); };
-      $('linkbox').open = true;
+      $('sheet').hidden = false;
       renderStatus(null); return;
     }
-    $('linkstate').className='pill run'; $('linkstate').textContent='linked';
-    $('hint').textContent='One tap: the task is filed as an issue and the Mac picks it up within about 20 seconds.';
+    $('hint').textContent = 'One tap: the card is filed as an issue and the Mac picks it up within about 20 seconds.';
     try {
       const issues = await gh('GET', '/repos/' + CFG.owner + '/' + CFG.repo + '/issues?labels=jumpr:status&state=open&per_page=1');
       const body = (issues[0] && issues[0].body) || '';
       const m = body.match(/<!--\s*jumpr-status\s*([\s\S]*?)-->/);
       renderStatus(m ? JSON.parse(m[1]) : null);
-      const mine = await gh('GET', '/repos/' + CFG.owner + '/' + CFG.repo + '/issues?state=all&per_page=8&sort=created&direction=desc');
-      const rows = mine.filter(i => !i.labels.some(l => l.name==='jumpr:status')).map(i => { const st = (i.labels.map(l=>l.name).find(n=>n.startsWith('jumpr:'))||'sent').replace('jumpr:',''); return '<div class="item"><span class="t"><a href="' + esc(i.html_url) + '">#' + i.number + '</a> ' + esc(i.title) + '</span><span class="tag ' + esc(st) + '">' + esc(st) + '</span></div>'; });
-      if (rows.length) $('recent').innerHTML = rows.join('');
-    } catch (e) { $('status').innerHTML = '<span class="pill bad">' + esc(e.message) + '</span>'; }
+    } catch (e) { $('chips').innerHTML = '<span class="chip bad">error <b>' + esc(e.message) + '</b></span>'; }
   }
+
+  // ------------------------------------------------------------ send
   async function send() {
-    const text = $('text').value.trim(); if (!text) { $('text').focus(); return; }
+    const rest = $('text').value.trim();
+    const parts = notes.slice(); if (rest) parts.push(rest);
+    if (!parts.length) { $('text').focus(); return; }
+    const text = parts.join('\n\n');
     const title = text.split('\n')[0].slice(0, 80);
     const body = text + '\n\n<!-- sent from jumpr pad -->';
-    const label = 'project:' + (selected || 'inbox');
-    const labels = [label].concat($('skipDesign').checked ? ['option:no-design'] : []);
+    const labels = ['project:' + (selected || 'inbox')].concat(isMain(acct) ? [] : ['account:' + acct]).concat($('skipDesign').checked ? ['option:no-design'] : []);
     if (!KEY) {
-      const u = CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues/new?' + new URLSearchParams({ title: '[' + (selected||'inbox') + '] ' + title, body, labels: labels.join(',') });
+      const u = CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues/new?' + new URLSearchParams({ title: '[' + (selected||'inbox') + '] ' + (isMain(acct) ? '' : '[account:' + acct + '] ') + title, body, labels: labels.join(',') });
       window.open(u, '_blank'); return;
     }
     const btn = $('send'); btn.disabled = true; btn.textContent = 'Sending…';
-    const ack = $('ack'); ack.style.display='block'; ack.textContent = 'Sending…';
+    const ack = $('ack'); ack.hidden = false; ack.textContent = 'Sending to ' + acctLabel(acct) + '…';
     try {
       const is = await gh('POST', '/repos/' + CFG.owner + '/' + CFG.repo + '/issues', { title, body, labels });
-      $('text').value = ''; $('skipDesign').checked = false;
-      ack.textContent = 'Sent as #' + is.number + '. Waiting for the Mac to pick it up (it checks every 20 seconds)…';
+      $('text').value = ''; ls.del('jumpr.draft'); notes = []; renderNotes(); $('skipDesign').checked = false;
+      ack.textContent = 'Sent as #' + is.number + ' for ' + acctLabel(acct) + '. Waiting for the Mac to pick it up (it checks every 20 seconds)…';
       const t0 = Date.now();
       while (Date.now() - t0 < 180000) {
         await new Promise(r => setTimeout(r, 4000));
@@ -166,15 +365,18 @@
       }
       if (Date.now() - t0 >= 180000) ack.textContent += '\nNo ack yet. Is the Mac awake and jumpr running? The task is saved as issue #' + is.number + ' and will be picked up when it is.';
     } catch (e) { ack.textContent = 'Failed: ' + e.message; }
-    btn.disabled = false; btn.textContent = 'Send to the Mac';
+    btn.disabled = false; renderAccounts();
   }
   $('send').onclick = send;
-  $('savekey').onclick = () => { const k = $('key').value.trim(); if (!k) return; ls.set('jumpr.key', k); KEY = k; $('key').value=''; $('linkbox').open=false; $('ack').style.display='block'; $('ack').textContent='Linked. Loading the Mac status…'; loadStatus(); };
+  $('gear').onclick = () => { $('sheet').hidden = !$('sheet').hidden; if (!$('sheet').hidden) $('sheet').scrollIntoView({behavior:'smooth', block:'start'}); };
+  $('savekey').onclick = () => { const k = $('key').value.trim(); if (!k) return; ls.set('jumpr.key', k); KEY = k; $('key').value=''; $('sheet').hidden = true; $('ack').hidden = false; $('ack').textContent='Linked. Loading the Mac status…'; loadStatus(); };
   $('unlink').onclick = () => { if (!confirm('Forget the key on this phone?')) return; ls.del('jumpr.key'); KEY=''; loadStatus(); };
   $('reload').onclick = loadStatus;
-  renderProjects(); loadStatus();
-  if (justLinked && ls.get('jumpr.key')) { $('ack').style.display='block'; $('ack').textContent='This phone is now linked. The key was removed from the address bar; delete the message you opened the link from.'; }
+  renderAccounts(); renderProjects(); renderNotes(); loadStatus();
+  if (justLinked && ls.get('jumpr.key')) { $('ack').hidden = false; $('ack').textContent='This phone is now linked. The key was removed from the address bar; delete the message you opened the link from.'; }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) loadStatus(); });
+  setInterval(() => { if (!document.hidden) loadStatus(); }, 45000);
+  setInterval(() => { if (status) macLine(status); }, 5000);
 })();
 </script>
 </body>
