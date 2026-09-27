@@ -110,7 +110,7 @@
   .pad button:focus-visible, .pad textarea:focus-visible, .pad input:focus-visible { outline:2px solid var(--soft); outline-offset:2px; }
 </style>
 </head>
-<body data-jumpr-pad="1.1.0">
+<body data-jumpr-pad="1.2.0">
 <main class="pad">
   <header class="top">
     <div class="mark"><span>🦘</span>JUMPR</div>
@@ -167,7 +167,7 @@
 </main>
 <script>
 (function(){
-  const CFG = { owner: "velocitymarine1-prog", repo: "jumpr-queue", api: "https://api.github.com", web: "https://github.com", version: "1.1.0" };
+  const CFG = { owner: "velocitymarine1-prog", repo: "jumpr-queue", api: "https://api.github.com", web: "https://github.com", version: "1.2.0" };
   const $ = id => document.getElementById(id);
   const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const ls = { get:k=>{ try{return localStorage.getItem(k);}catch(e){return null;} }, set:(k,v)=>{ try{localStorage.setItem(k,v);}catch(e){} }, del:k=>{ try{localStorage.removeItem(k);}catch(e){} } };
@@ -303,7 +303,7 @@
     if (js.daemon_alive === false) chips.push(chip('bad', 'daemon', 'down'));
     $('chips').innerHTML = chips.join('');
     const now = [];
-    for (const r of js.running||[]) now.push('<div><b>now:</b> <span class="k">' + esc(r.id) + ' ' + esc(lab(r.project)||r.project) + '</span>: ' + esc(r.title) + (r.account && !isMain(r.account) ? ' <b>[' + esc(acctLabel(r.account)) + ']</b>' : '') + '</div>');
+    for (const r of js.running||[]) now.push('<div><b>now:</b> <span class="k">' + esc(r.id) + ' ' + esc(lab(r.project)||r.project) + '</span>: ' + esc(r.title) + (r.phase ? ' · ' + esc(r.phase) + ' phase' : '') + (r.account && !isMain(r.account) ? ' <b>[' + esc(acctLabel(r.account)) + ']</b>' : '') + '</div>');
     const q = (js.queued||[]).slice(0,6);
     if (q.length) now.push('<div><b>next:</b> ' + q.map(r => esc(r.id) + ' ' + esc(lab(r.project)||r.project) + ': ' + esc((r.title||'').slice(0,60))).join(' · ') + '</div>');
     $('now').innerHTML = now.join('');
