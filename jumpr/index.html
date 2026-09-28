@@ -66,6 +66,12 @@
   .pad .btn.primary { background:var(--orange); border-color:var(--orange); color:#1a0a03; }
   .pad .btn.primary.b { background:var(--ember); border-color:var(--ember-line); color:#fff; }
   .pad .btn:disabled { opacity:.5; }
+  /* the card's kind (1.3): a design pass only, or a build */
+  .pad .kindrow { margin-top:14px; }
+  .pad .kinds { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
+  .pad .kinds button { font:inherit; font-size:15px; font-weight:600; padding:11px 6px; border-radius:var(--r2); border:1px solid var(--line2); background:transparent; color:var(--mute); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .pad .kinds button.on { background:var(--soft); border-color:var(--soft); color:var(--paper-ink); }
+  .pad .kinds button.on.build { background:var(--orange); border-color:var(--orange); color:#1a0a03; }
   .pad .opt { margin-top:12px; font-size:14px; color:var(--mute); display:flex; align-items:center; gap:8px; }
   .pad .opt input { width:18px; height:18px; accent-color:var(--orange); margin:0; }
   .pad .hint { color:var(--mute); font-size:13.5px; margin-top:10px; line-height:1.45; }
@@ -93,7 +99,11 @@
   .pad .row .t .m a { color:var(--soft); text-decoration:none; }
   .pad .st { font-family:var(--mono); font-size:12px; padding:3px 8px; border-radius:7px; border:1px solid var(--line2); color:var(--mute); white-space:nowrap; margin-top:2px; }
   .pad .st.busy { color:var(--soft); border-color:var(--soft); }
-  .pad .st.done { color:var(--ok); border-color:var(--ok); }
+  .pad .st.done, .pad .st.built { color:var(--ok); border-color:var(--ok); }
+  .pad .st.design { color:var(--soft); border-color:var(--soft); }
+  .pad .side { display:grid; gap:5px; justify-items:end; }
+  .pad .mini { font:inherit; font-size:12px; font-weight:700; padding:3px 9px; border-radius:7px; border:1px solid var(--soft); background:transparent; color:var(--soft); white-space:nowrap; cursor:pointer; }
+  .pad .row .t .m em { color:var(--soft); font-style:normal; }
   .pad .st.blocked, .pad .st.failed, .pad .st.error, .pad .st.lost { color:var(--bad); border-color:var(--bad); }
   .pad .st.waiting { color:var(--warn); border-color:var(--warn); }
   .pad .st.busy::before { content:""; display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--soft); margin-right:6px; animation:pulse 1.2s ease-in-out infinite; }
@@ -110,7 +120,7 @@
   .pad button:focus-visible, .pad textarea:focus-visible, .pad input:focus-visible { outline:2px solid var(--soft); outline-offset:2px; }
 </style>
 </head>
-<body data-jumpr-pad="1.2.0">
+<body data-jumpr-pad="1.3.0">
 <main class="pad">
   <header class="top">
     <div class="mark"><span>🦘</span>JUMPR</div>
@@ -134,8 +144,13 @@
     <textarea id="text" placeholder="Talk it out — Wispr Flow lands here. Paint the picture."></textarea>
     <div class="notes" id="notes"></div>
     <button class="btn" id="addNote">+ Add note</button>
+    <div class="kindrow" id="kindRow" hidden>
+      <div class="lab">Card <span class="right">what this card is</span></div>
+      <div class="kinds" id="kinds"></div>
+      <div class="hint" id="kindHint"></div>
+    </div>
     <button class="btn primary" id="send">Send to Claude A</button>
-    <label class="opt"><input type="checkbox" id="skipDesign"> skip the design pass for this card</label>
+    <label class="opt" id="skipRow"><input type="checkbox" id="skipDesign"> skip the design pass for this card</label>
     <div class="hint" id="hint"></div>
     <div class="ack" id="ack" hidden></div>
   </section>
@@ -167,7 +182,7 @@
 </main>
 <script>
 (function(){
-  const CFG = { owner: "velocitymarine1-prog", repo: "jumpr-queue", api: "https://api.github.com", web: "https://github.com", version: "1.2.0" };
+  const CFG = { owner: "velocitymarine1-prog", repo: "jumpr-queue", api: "https://api.github.com", web: "https://github.com", version: "1.3.0" };
   const $ = id => document.getElementById(id);
   const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const ls = { get:k=>{ try{return localStorage.getItem(k);}catch(e){return null;} }, set:(k,v)=>{ try{localStorage.setItem(k,v);}catch(e){} }, del:k=>{ try{localStorage.removeItem(k);}catch(e){} } };
@@ -190,6 +205,8 @@
   let accounts = FALLBACK_ACCOUNTS;
   let selected = ls.get('jumpr.sel') || '';
   let acct = ls.get('jumpr.acct') || 'main';
+  let kind = '';              // '' = Auto (jumpr reads the words), 'design' = a design pass only, 'build' = a build; never remembered
+  let kinds13 = false;        // the Mac runs jumpr 1.3 or later (the status JSON says), so the Card control and Build buttons make sense
   let notes = []; try { notes = JSON.parse(ls.get('jumpr.notes')||'[]'); if (!Array.isArray(notes)) notes = []; } catch(e){ notes = []; }
   let status = null;
   $('repo').textContent = 'inbox: ' + CFG.owner + '/' + CFG.repo;
@@ -242,6 +259,21 @@
     }).join('');
   }
 
+  // ------------------------------------------------------------ the card's kind (1.3)
+  const KIND_HINT = { '': 'jumpr reads your words: “run a design pass…” stops at the design on Opus 5.5; anything else builds on Fable.',
+                      design: 'Opus 5.5 writes the design and stops. Nothing is built until you tap Build.',
+                      build: 'Fable builds it: the design note first, shown in Chrome, then the build.' };
+  function vGte(v, want) { const a=String(v||'0').split('.').map(x=>parseInt(x,10)||0), b=want.split('.').map(x=>parseInt(x,10)||0); for (let i=0;i<b.length;i++){ if ((a[i]||0)>b[i]) return true; if ((a[i]||0)<b[i]) return false; } return true; }
+  function renderKind() {
+    $('kindRow').hidden = !kinds13;
+    $('kinds').innerHTML = [['', 'Auto'], ['design', '📐 Design'], ['build', '🔨 Build']].map(([k, label]) =>
+      '<button data-kind="' + k + '" class="' + (k || 'auto') + (k===kind ? ' on' : '') + '">' + label + '</button>').join('');
+    $('kindHint').textContent = KIND_HINT[kind] || KIND_HINT[''];
+    $('skipRow').hidden = kind === 'design';
+    if (kind === 'design') $('skipDesign').checked = false;
+  }
+  $('kinds').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; kind = b.dataset.kind || ''; renderKind(); });
+
   // ------------------------------------------------------------ projects
   function renderProjects() {
     const box = $('projects'); box.innerHTML = '';
@@ -279,10 +311,30 @@
   }
   function cardRow(h) {
     const main = isMain(h.account);
-    const links = (h.issue ? ' <a href="' + CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues/' + h.issue + '">#' + h.issue + '</a>' : '') + (h.record ? ' <a href="' + esc(h.record) + '" title="record on GitHub">📁</a>' : '');
-    const meta = [h.id, lab(h.project) || h.project, ago(h.finished)].filter(Boolean).join(' · ');
-    return '<div class="row"><span class="badge ' + (main?'a':'b') + '" title="' + esc(acctLabel(h.account||'main')) + '">' + (main?'A':'B') + '</span><div class="t"><div class="h">' + esc(h.title) + '</div><div class="m">' + esc(meta) + links + (h.summary ? ' — ' + esc(h.summary) : '') + '</div></div><span class="st ' + esc(h.status) + '">' + esc(h.status) + '</span></div>';
+    const links = (h.issue ? ' <a href="' + CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues/' + h.issue + '">#' + h.issue + '</a>' : '') + (h.record ? ' <a href="' + esc(h.record) + '" title="record on GitHub">📁</a>' : '') + (h.design_url ? ' <a href="' + esc(h.design_url) + '" title="the design as a page">🖼</a>' : '');
+    const metaParts = [h.id, lab(h.project) || h.project, ago(h.finished)];
+    let pill = '<span class="st ' + esc(h.status) + '">' + esc(h.status) + '</span>', side = '';
+    const ds = h.design_state;  // 1.3: a design pass and whether it was built
+    if (ds) {
+      const stateText = ds === 'ready' ? 'not built' : ds === 'building' ? 'building · ' + h.built_by : ds === 'built' ? 'built · ' + h.built_by : ds.replace('build_', 'build ') + ' · ' + h.built_by;
+      metaParts.push('<em>' + esc(stateText) + '</em>');
+      pill = ds === 'building' ? '<span class="st busy">building</span>' : ds === 'built' ? '<span class="st built">built</span>' : '<span class="st design">design</span>';
+      if (ds !== 'built' && ds !== 'building' && kinds13) side = '<button class="mini" data-build="' + esc(h.id) + '" data-lane="' + esc(h.project) + '" data-acct="' + esc(h.account || '') + '" data-title="' + esc((h.title || '').slice(0, 80)) + '">Build ▸</button>';
+    } else if (h.build_of) {
+      metaParts.push('build of ' + h.build_of);
+    }
+    const meta = metaParts.filter(Boolean).join(' · ');
+    return '<div class="row"><span class="badge ' + (main?'a':'b') + '" title="' + esc(acctLabel(h.account||'main')) + '">' + (main?'A':'B') + '</span><div class="t"><div class="h">' + esc(h.title) + '</div><div class="m">' + meta + links + (h.summary ? ' — ' + esc(h.summary) : '') + '</div></div><div class="side">' + pill + side + '</div></div>';
   }
+  $('recent').addEventListener('click', e => {
+    const b = e.target.closest('button[data-build]'); if (!b) return;
+    const did = b.dataset.build;
+    if (!confirm('Build ' + did + ' on Fable now? It continues ' + did + "'s design conversation and changes the project.")) return;
+    const labels = ['project:' + (b.dataset.lane || 'inbox'), 'kind:build'].concat(b.dataset.acct && !isMain(b.dataset.acct) ? ['account:' + b.dataset.acct] : []);
+    const body = 'Build ' + did + "'s design pass (" + b.dataset.title + ').\n\n<!-- jumpr build-of ' + did + ' -->\n<!-- sent from jumpr pad -->';
+    $('ack').scrollIntoView({behavior:'smooth', block:'center'});
+    fileIssue('Build ' + did, body, labels, acctLabel(b.dataset.acct || 'main'), b.dataset.lane, b.dataset.acct);
+  });
   function renderStatus(js) {
     status = js;
     macLine(js);
@@ -302,16 +354,19 @@
     chips.push(chip('', 'today', js.day_count + '/' + js.day_cap));
     if (js.daemon_alive === false) chips.push(chip('bad', 'daemon', 'down'));
     $('chips').innerHTML = chips.join('');
+    const kindOf = r => r.kind === 'design' ? ' · design pass' : r.build_of ? ' · build of ' + esc(r.build_of) : r.kind === 'build' ? ' · build' : (r.phase ? ' · ' + esc(r.phase) + ' phase' : '');
     const now = [];
-    for (const r of js.running||[]) now.push('<div><b>now:</b> <span class="k">' + esc(r.id) + ' ' + esc(lab(r.project)||r.project) + '</span>: ' + esc(r.title) + (r.phase ? ' · ' + esc(r.phase) + ' phase' : '') + (r.account && !isMain(r.account) ? ' <b>[' + esc(acctLabel(r.account)) + ']</b>' : '') + '</div>');
+    for (const r of js.running||[]) now.push('<div><b>now:</b> <span class="k">' + esc(r.id) + ' ' + esc(lab(r.project)||r.project) + '</span>: ' + esc(r.title) + kindOf(r) + (r.account && !isMain(r.account) ? ' <b>[' + esc(acctLabel(r.account)) + ']</b>' : '') + '</div>');
     const q = (js.queued||[]).slice(0,6);
-    if (q.length) now.push('<div><b>next:</b> ' + q.map(r => esc(r.id) + ' ' + esc(lab(r.project)||r.project) + ': ' + esc((r.title||'').slice(0,60))).join(' · ') + '</div>');
+    if (q.length) now.push('<div><b>next:</b> ' + q.map(r => esc(r.id) + ' ' + esc(lab(r.project)||r.project) + ': ' + esc((r.title||'').slice(0,60)) + kindOf(r)).join(' · ') + '</div>');
     $('now').innerHTML = now.join('');
     if (js.lanes && js.lanes.length) lanes = js.lanes;
     if (js.projects && js.projects.length) { projects = js.projects; ls.set('jumpr.projects', JSON.stringify(projects)); }
     renderProjects();
     if (js.accounts && js.accounts.length) accounts = js.accounts;
     renderAccounts();
+    kinds13 = vGte(js.jumpr, '1.3');
+    renderKind();
     const live = (js.sessions && js.sessions.live) || [];
     $('liveCount').textContent = live.length ? live.length + ' session' + (live.length===1?'':'s') : 'every Claude Code session on the Mac';
     $('live').innerHTML = live.length ? live.map(sessionRow).join('') : '<div class="empty">Nothing running. Both Claudes are idle.</div>';
@@ -340,24 +395,21 @@
   }
 
   // ------------------------------------------------------------ send
-  async function send() {
-    const rest = $('text').value.trim();
-    const parts = notes.slice(); if (rest) parts.push(rest);
-    if (!parts.length) { $('text').focus(); return; }
-    const text = parts.join('\n\n');
-    const title = text.split('\n')[0].slice(0, 80);
-    const body = text + '\n\n<!-- sent from jumpr pad -->';
-    const labels = ['project:' + (selected || 'inbox')].concat(isMain(acct) ? [] : ['account:' + acct]).concat($('skipDesign').checked ? ['option:no-design'] : []);
+  async function fileIssue(title, body, labels, who, lane, account) {
+    /* One card = one issue. Unlinked: GitHub's own new-issue form, prefilled (the tags carry what the labels would).
+       Linked: file it, then show the Mac's ack (it polls every 20 s). Returns true when the issue was filed. */
     if (!KEY) {
-      const u = CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues/new?' + new URLSearchParams({ title: '[' + (selected||'inbox') + '] ' + (isMain(acct) ? '' : '[account:' + acct + '] ') + title, body, labels: labels.join(',') });
-      window.open(u, '_blank'); return;
+      const tags = '[' + (lane || 'inbox') + '] ' + (account && !isMain(account) ? '[account:' + account + '] ' : '') + (labels.includes('kind:design') ? '[design] ' : labels.includes('kind:build') ? '[build] ' : '');
+      const u = CFG.web + '/' + CFG.owner + '/' + CFG.repo + '/issues/new?' + new URLSearchParams({ title: tags + title, body, labels: labels.join(',') });
+      window.open(u, '_blank'); return false;
     }
     const btn = $('send'); btn.disabled = true; btn.textContent = 'Sending…';
-    const ack = $('ack'); ack.hidden = false; ack.textContent = 'Sending to ' + acctLabel(acct) + '…';
+    const ack = $('ack'); ack.hidden = false; ack.textContent = 'Sending to ' + who + '…';
+    let filed = false;
     try {
       const is = await gh('POST', '/repos/' + CFG.owner + '/' + CFG.repo + '/issues', { title, body, labels });
-      $('text').value = ''; ls.del('jumpr.draft'); notes = []; renderNotes(); $('skipDesign').checked = false;
-      ack.textContent = 'Sent as #' + is.number + ' for ' + acctLabel(acct) + '. Waiting for the Mac to pick it up (it checks every 20 seconds)…';
+      filed = true;
+      ack.textContent = 'Sent as #' + is.number + ' for ' + who + '. Waiting for the Mac to pick it up (it checks every 20 seconds)…';
       const t0 = Date.now();
       while (Date.now() - t0 < 180000) {
         await new Promise(r => setTimeout(r, 4000));
@@ -367,13 +419,26 @@
       if (Date.now() - t0 >= 180000) ack.textContent += '\nNo ack yet. Is the Mac awake and jumpr running? The task is saved as issue #' + is.number + ' and will be picked up when it is.';
     } catch (e) { ack.textContent = 'Failed: ' + e.message; }
     btn.disabled = false; renderAccounts();
+    return filed;
+  }
+  async function send() {
+    const rest = $('text').value.trim();
+    const parts = notes.slice(); if (rest) parts.push(rest);
+    if (!parts.length) { $('text').focus(); return; }
+    const text = parts.join('\n\n');
+    const title = text.split('\n')[0].slice(0, 80);
+    const body = text + '\n\n<!-- sent from jumpr pad -->';
+    const labels = ['project:' + (selected || 'inbox')].concat(isMain(acct) ? [] : ['account:' + acct])
+      .concat(kind ? ['kind:' + kind] : []).concat($('skipDesign').checked && kind !== 'design' ? ['option:no-design'] : []);
+    const filed = await fileIssue(title, body, labels, acctLabel(acct), selected || 'inbox', acct);
+    if (filed) { $('text').value = ''; ls.del('jumpr.draft'); notes = []; renderNotes(); $('skipDesign').checked = false; kind = ''; renderKind(); }
   }
   $('send').onclick = send;
   $('gear').onclick = () => { $('sheet').hidden = !$('sheet').hidden; if (!$('sheet').hidden) $('sheet').scrollIntoView({behavior:'smooth', block:'start'}); };
   $('savekey').onclick = () => { const k = $('key').value.trim(); if (!k) return; ls.set('jumpr.key', k); KEY = k; $('key').value=''; $('sheet').hidden = true; $('ack').hidden = false; $('ack').textContent='Linked. Loading the Mac status…'; loadStatus(); };
   $('unlink').onclick = () => { if (!confirm('Forget the key on this phone?')) return; ls.del('jumpr.key'); KEY=''; loadStatus(); };
   $('reload').onclick = loadStatus;
-  renderAccounts(); renderProjects(); renderNotes(); loadStatus();
+  renderAccounts(); renderProjects(); renderNotes(); renderKind(); loadStatus();
   if (justLinked && ls.get('jumpr.key')) { $('ack').hidden = false; $('ack').textContent='This phone is now linked. The key was removed from the address bar; delete the message you opened the link from.'; }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) loadStatus(); });
   setInterval(() => { if (!document.hidden) loadStatus(); }, 45000);
